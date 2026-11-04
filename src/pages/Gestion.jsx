@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../context/UserContext";
+import { ThemeContext } from "../context/ThemeContext";
 
 export default function Gestion() {
   const { user } = useContext(UserContext);
+  const { isDark } = useContext(ThemeContext);
 
   const [vehiculos, setVehiculos] = useState([]);
   const [marcas, setMarcas] = useState([]);
   const [tiposVehiculos, setTiposVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Estado para saber si estamos editando (id o null)
+  const [editandoId, setEditandoId] = useState(null);
 
   // Estado del formulario
   const [form, setForm] = useState({
@@ -45,13 +50,14 @@ export default function Gestion() {
         setMarcas(marcasList);
         setTiposVehiculos(tiposList);
 
-        // Preseleccionar primera marca y tipo si no están seleccionados
-        setForm((prev) => ({
-          ...prev,
-          marca_id: prev.marca_id || (marcasList[0]?.id ? String(marcasList[0].id) : ""),
-          tipo_vehiculo_id:
-            prev.tipo_vehiculo_id || (tiposList[0]?.id ? String(tiposList[0].id) : ""),
-        }));
+        if (!editandoId) {
+          setForm((prev) => ({
+            ...prev,
+            marca_id: prev.marca_id || (marcasList[0]?.id ? String(marcasList[0].id) : ""),
+            tipo_vehiculo_id:
+              prev.tipo_vehiculo_id || (tiposList[0]?.id ? String(tiposList[0].id) : ""),
+          }));
+        }
 
         setLoading(false);
       })
@@ -66,22 +72,19 @@ export default function Gestion() {
     cargarDatos();
   }, [API_URL]);
 
-  // Manejo de inputs del formulario
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    // Limpiar error del campo específico mientras escribe
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
 
-  // Validación obligatoria del formulario
   const validate = () => {
     const newErrors = {};
 
     if (!form.nombre.trim()) {
-      newErrors.nombre = "El nombre del vehículo es obligatorio.";
+      newErrors.nombre = "El nombre es obligatorio.";
     } else if (form.nombre.trim().length < 3) {
       newErrors.nombre = "Debe tener al menos 3 caracteres.";
     }
@@ -89,35 +92,65 @@ export default function Gestion() {
     if (!form.precio) {
       newErrors.precio = "El precio es obligatorio.";
     } else if (Number(form.precio) <= 0) {
-      newErrors.precio = "El precio debe ser un número mayor a 0.";
+      newErrors.precio = "Debe ser mayor a 0.";
     }
 
     if (!form.stock && form.stock !== 0) {
       newErrors.stock = "El stock es obligatorio.";
     } else if (Number(form.stock) < 0) {
-      newErrors.stock = "El stock no puede ser negativo.";
+      newErrors.stock = "No puede ser negativo.";
     }
 
     if (form.modelo && (Number(form.modelo) < 1900 || Number(form.modelo) > 2030)) {
-      newErrors.modelo = "Ingresa un año válido (ej: 2018).";
-    }
-
-    if (form.descripcion && form.descripcion.length > 500) {
-      newErrors.descripcion = "La descripción no puede superar los 500 caracteres.";
+      newErrors.modelo = "Año inválido.";
     }
 
     if (!form.marca_id) {
-      newErrors.marca_id = "Debes seleccionar una marca.";
+      newErrors.marca_id = "Selecciona una marca.";
     }
 
     if (!form.tipo_vehiculo_id) {
-      newErrors.tipo_vehiculo_id = "Debes seleccionar un tipo de vehículo.";
+      newErrors.tipo_vehiculo_id = "Selecciona un tipo.";
     }
 
     return newErrors;
   };
 
-  // Envío del formulario para CREAR vehículo (POST)
+  // Activar modo edición: carga el vehículo en el formulario
+  const iniciarEdicion = (auto) => {
+    setEditandoId(auto.id);
+    setForm({
+      nombre: auto.nombre || "",
+      precio: auto.precio ? String(auto.precio) : "",
+      stock: auto.stock !== undefined ? String(auto.stock) : "1",
+      modelo: auto.modelo ? String(auto.modelo) : "",
+      url_image: auto.url_image || "",
+      descripcion: auto.descripcion || "",
+      estado_uso: auto.estado_uso || "usado",
+      marca_id: auto.marca_id ? String(auto.marca_id) : "",
+      tipo_vehiculo_id: auto.tipo_vehiculo_id ? String(auto.tipo_vehiculo_id) : "",
+    });
+    setFormErrors({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelarEdicion = () => {
+    setEditandoId(null);
+    setForm({
+      nombre: "",
+      precio: "",
+      stock: "1",
+      modelo: new Date().getFullYear().toString(),
+      url_image: "",
+      descripcion: "",
+      estado_uso: "usado",
+      marca_id: marcas[0]?.id ? String(marcas[0].id) : "",
+      tipo_vehiculo_id: tiposVehiculos[0]?.id ? String(tiposVehiculos[0].id) : "",
+    });
+    setFormErrors({});
+  };
+
+  // Guardar (POST para nuevo, PUT para editar)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFeedback({ tipo: "", mensaje: "" });
@@ -144,8 +177,14 @@ export default function Gestion() {
         tipo_vehiculo_id: Number(form.tipo_vehiculo_id),
       };
 
-      const res = await fetch(`${API_URL}/vehiculos/`, {
-        method: "POST",
+      const url = editandoId
+        ? `${API_URL}/vehiculos/${editandoId}`
+        : `${API_URL}/vehiculos/`;
+
+      const method = editandoId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -153,43 +192,35 @@ export default function Gestion() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(
-          errorData.detail?.[0]?.msg || errorData.detail || "Error al crear el vehículo en el servidor"
+          errorData.detail?.[0]?.msg || errorData.detail || "Error en la petición a la API"
         );
       }
 
       setFeedback({
         tipo: "exito",
-        mensaje: `¡Vehículo "${form.nombre}" creado exitosamente!`,
+        mensaje: editandoId
+          ? `¡Vehículo #${editandoId} actualizado con éxito (PUT)!`
+          : `¡Vehículo "${form.nombre}" creado exitosamente (POST)!`,
       });
 
-      // Resetear campos del form manteniendo marcas
-      setForm((prev) => ({
-        ...prev,
-        nombre: "",
-        precio: "",
-        stock: "1",
-        url_image: "",
-        descripcion: "",
-      }));
-      setFormErrors({});
+      cancelarEdicion();
       cargarDatos();
     } catch (err) {
       console.error("Error al guardar:", err);
       setFeedback({
         tipo: "error",
-        mensaje: err.message || "No se pudo crear el vehículo.",
+        mensaje: err.message || "No se pudo procesar la operación.",
       });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Función para ELIMINAR vehículo (DELETE)
+  // Eliminar vehículo (DELETE)
   const handleEliminar = async (id, nombre) => {
     const confirmar = window.confirm(
-      `¿Estás seguro de que deseas eliminar permanentemente el vehículo "${nombre}" (ID #${id})?`
+      `¿Deseas eliminar definitivamente el vehículo "${nombre}" (ID #${id})?`
     );
-
     if (!confirmar) return;
 
     try {
@@ -202,40 +233,55 @@ export default function Gestion() {
       }
 
       setVehiculos((prev) => prev.filter((item) => item.id !== id));
+      if (editandoId === id) cancelarEdicion();
+
       setFeedback({
         tipo: "exito",
-        mensaje: `Vehículo "${nombre}" eliminado con éxito.`,
+        mensaje: `Vehículo "${nombre}" eliminado correctamente (DELETE).`,
       });
     } catch (err) {
       console.error("Error al eliminar:", err);
-      alert("Error al eliminar el vehículo: " + err.message);
+      alert("Error al eliminar: " + err.message);
     }
   };
 
-  // Guardia de rol Admin (según patrón de Valentino en AgregarProducto)
+  const obtenerNombreMarca = (id) =>
+    marcas.find((m) => m.id === id)?.nombre || "General";
+
+  const obtenerNombreTipo = (id) =>
+    tiposVehiculos.find((t) => t.id === id)?.nombre || "General";
+
+  // Si no es admin, mostrar bloqueo
   if (!user.admin) {
     return (
       <section className="flex flex-col items-center justify-center py-24 text-center">
         <p className="text-6xl mb-4">🔒</p>
         <h2 className="text-3xl font-extrabold text-red-500 mb-2">
-          Acceso Restringido
+          Acceso Restringido a Administradores
         </h2>
         <p className="text-zinc-400 max-w-md mb-6">
-          Esta vista es el panel de gestión administrativa para crear y dar de baja vehículos en la base de datos.
-        </p>
-        <p className="text-xs text-zinc-500 bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-700">
-          💡 Puedes activar el modo <strong>Admin</strong> desde el botón de la página de <strong>Home</strong>.
+          Esta vista permite gestionar la base de datos de vehículos. Puedes activar el modo administrador desde el botón en la barra superior.
         </p>
       </section>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12">
+    <div className="max-w-5xl mx-auto space-y-10">
       <div>
-        <h1 className="text-3xl font-extrabold text-white">Panel de Gestión</h1>
-        <p className="text-zinc-400 text-sm mt-1">
-          Administración de base de datos de vehículos (Operaciones de creación y eliminación).
+        <h1
+          className={`text-3xl font-black ${
+            isDark ? "text-white" : "text-zinc-900"
+          }`}
+        >
+          Gestión de Base de Datos
+        </h1>
+        <p
+          className={`text-sm mt-1 ${
+            isDark ? "text-zinc-400" : "text-zinc-600"
+          }`}
+        >
+          Panel de administración para registrar (POST), modificar (PUT) y dar de baja (DELETE) vehículos.
         </p>
       </div>
 
@@ -258,64 +304,98 @@ export default function Gestion() {
         </div>
       )}
 
-      {/* Formulario de Creación */}
-      <div className="bg-zinc-800 rounded-2xl p-6 sm:p-8 border border-zinc-700 shadow-xl">
-        <h2 className="text-xl font-bold text-green-400 mb-6 flex items-center gap-2">
-          <span>➕</span> Registrar Nuevo Vehículo
-        </h2>
+      {/* Formulario (Crear / Editar) */}
+      <div
+        className={`p-6 sm:p-8 rounded-2xl border shadow-xl ${
+          isDark
+            ? "bg-zinc-800 border-zinc-700"
+            : "bg-white border-zinc-200"
+        }`}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2
+            className={`text-xl font-bold flex items-center gap-2 ${
+              editandoId ? "text-amber-400" : "text-green-500"
+            }`}
+          >
+            <span>{editandoId ? "✏️" : "➕"}</span>
+            <span>
+              {editandoId
+                ? `Editando Vehículo #${editandoId}`
+                : "Registrar Nuevo Vehículo"}
+            </span>
+          </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {editandoId && (
+            <button
+              onClick={cancelarEdicion}
+              className="text-xs text-zinc-400 hover:text-white bg-zinc-700 px-3 py-1.5 rounded-lg cursor-pointer"
+            >
+              ✕ Cancelar Edición
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Nombre */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Nombre del Vehículo / Modelo *
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+                Nombre / Modelo *
               </label>
               <input
                 type="text"
                 name="nombre"
                 value={form.nombre}
                 onChange={handleChange}
-                placeholder="Ej: Ford Ranger Raptor"
-                className={`w-full px-4 py-2.5 rounded-lg bg-zinc-900 border text-white text-sm focus:outline-none ${
-                  formErrors.nombre ? "border-rose-500" : "border-zinc-700 focus:border-green-400"
+                placeholder="Ej: Toyota Hilux"
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
                 }`}
               />
               {formErrors.nombre && (
-                <p className="text-xs text-rose-400 mt-1 animate-pulse">{formErrors.nombre}</p>
+                <p className="text-xs text-rose-400 mt-1">{formErrors.nombre}</p>
               )}
             </div>
 
             {/* Precio */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Precio (USD / ARS) *
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+                Precio *
               </label>
               <input
                 type="number"
                 name="precio"
                 value={form.precio}
                 onChange={handleChange}
-                placeholder="Ej: 35000"
-                className={`w-full px-4 py-2.5 rounded-lg bg-zinc-900 border text-white text-sm focus:outline-none ${
-                  formErrors.precio ? "border-rose-500" : "border-zinc-700 focus:border-green-400"
+                placeholder="Ej: 32000"
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
                 }`}
               />
               {formErrors.precio && (
-                <p className="text-xs text-rose-400 mt-1 animate-pulse">{formErrors.precio}</p>
+                <p className="text-xs text-rose-400 mt-1">{formErrors.precio}</p>
               )}
             </div>
 
-            {/* Marca (Select) */}
+            {/* Marca */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Marca Fabricante *
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+                Marca *
               </label>
               <select
                 name="marca_id"
                 value={form.marca_id}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-green-400 cursor-pointer"
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                }`}
               >
                 {marcas.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -323,21 +403,22 @@ export default function Gestion() {
                   </option>
                 ))}
               </select>
-              {formErrors.marca_id && (
-                <p className="text-xs text-rose-400 mt-1 animate-pulse">{formErrors.marca_id}</p>
-              )}
             </div>
 
-            {/* Tipo de Vehículo (Select) */}
+            {/* Tipo */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
                 Tipo / Categoría *
               </label>
               <select
                 name="tipo_vehiculo_id"
                 value={form.tipo_vehiculo_id}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-green-400 cursor-pointer"
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                }`}
               >
                 {tiposVehiculos.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -345,14 +426,11 @@ export default function Gestion() {
                   </option>
                 ))}
               </select>
-              {formErrors.tipo_vehiculo_id && (
-                <p className="text-xs text-rose-400 mt-1 animate-pulse">{formErrors.tipo_vehiculo_id}</p>
-              )}
             </div>
 
             {/* Año / Modelo */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
                 Año de Modelo
               </label>
               <input
@@ -360,18 +438,19 @@ export default function Gestion() {
                 name="modelo"
                 value={form.modelo}
                 onChange={handleChange}
-                placeholder="Ej: 2024"
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-green-400"
+                placeholder="Ej: 2023"
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                }`}
               />
-              {formErrors.modelo && (
-                <p className="text-xs text-rose-400 mt-1 animate-pulse">{formErrors.modelo}</p>
-              )}
             </div>
 
             {/* Stock */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Stock Inicial *
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+                Stock *
               </label>
               <input
                 type="number"
@@ -379,139 +458,163 @@ export default function Gestion() {
                 value={form.stock}
                 onChange={handleChange}
                 min="0"
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-green-400"
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                }`}
               />
-              {formErrors.stock && (
-                <p className="text-xs text-rose-400 mt-1 animate-pulse">{formErrors.stock}</p>
-              )}
-            </div>
-
-            {/* Condición de Uso */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Condición de Uso
-              </label>
-              <select
-                name="estado_uso"
-                value={form.estado_uso}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-green-400 cursor-pointer"
-              >
-                <option value="nuevo">0 Km / Nuevo</option>
-                <option value="usado">Usado Certificado</option>
-              </select>
             </div>
 
             {/* URL Imagen */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                URL de Fotografía
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+                URL de Imagen
               </label>
               <input
                 type="url"
                 name="url_image"
                 value={form.url_image}
                 onChange={handleChange}
-                placeholder="https://ejemplo.com/auto.jpg"
-                className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-green-400"
+                placeholder="https://..."
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                }`}
               />
+            </div>
+
+            {/* Estado Uso */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+                Condición
+              </label>
+              <select
+                name="estado_uso"
+                value={form.estado_uso}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+                  isDark
+                    ? "bg-zinc-900 border-zinc-700 text-white"
+                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                }`}
+              >
+                <option value="nuevo">Nuevo / 0 Km</option>
+                <option value="usado">Usado Certificado</option>
+              </select>
             </div>
           </div>
 
-          {/* Descripción */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-              Descripción y Detalles ({form.descripcion.length}/500)
-            </label>
-            <textarea
-              name="descripcion"
-              rows="3"
-              value={form.descripcion}
-              onChange={handleChange}
-              placeholder="Detalla equipamiento, motorización, tapizado, etc."
-              className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-green-400"
-            ></textarea>
-            {formErrors.descripcion && (
-              <p className="text-xs text-rose-400 mt-1 animate-pulse">{formErrors.descripcion}</p>
-            )}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className={`w-full py-3 rounded-xl font-bold transition-all cursor-pointer ${
+                editandoId
+                  ? "bg-amber-400 hover:bg-amber-500 text-zinc-950"
+                  : "bg-green-400 hover:bg-green-500 text-zinc-950"
+              }`}
+            >
+              {submitting
+                ? "Guardando..."
+                : editandoId
+                ? "Guardar Modificaciones (PUT)"
+                : "Crear Vehículo (POST)"}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`w-full py-3.5 px-6 rounded-xl font-bold text-zinc-950 transition-colors cursor-pointer ${
-              submitting
-                ? "bg-zinc-600 cursor-not-allowed"
-                : "bg-green-400 hover:bg-green-500"
-            }`}
-          >
-            {submitting ? "Guardando en Base de Datos..." : "Guardar Vehículo en la API"}
-          </button>
         </form>
       </div>
 
-      {/* Tabla de Eliminación de Vehículos */}
-      <div className="bg-zinc-800 rounded-2xl p-6 sm:p-8 border border-zinc-700 shadow-xl">
+      {/* Lista Compacta de Productos para Gestión (con lápiz y basurero) */}
+      <div
+        className={`p-6 sm:p-8 rounded-2xl border shadow-xl ${
+          isDark
+            ? "bg-zinc-800 border-zinc-700"
+            : "bg-white border-zinc-200"
+        }`}
+      >
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span>📋</span> Listado Actual para Mantenimiento
-            </h2>
-            <p className="text-zinc-400 text-xs mt-1">
-              Operación DELETE con actualización en tiempo real del estado.
-            </p>
-          </div>
+          <h2
+            className={`text-xl font-bold ${
+              isDark ? "text-white" : "text-zinc-900"
+            }`}
+          >
+            📋 Listado de Vehículos Registrados
+          </h2>
           <button
             onClick={cargarDatos}
-            className="text-xs text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-lg cursor-pointer"
+            className="text-xs text-zinc-400 hover:text-white bg-zinc-700 px-3 py-1.5 rounded-lg cursor-pointer"
           >
-            🔄 Refrescar lista
+            🔄 Actualizar
           </button>
         </div>
 
         {loading ? (
           <p className="text-center py-8 text-zinc-400">Cargando unidades...</p>
         ) : vehiculos.length === 0 ? (
-          <p className="text-center py-8 text-zinc-400">No hay vehículos registrados en la base de datos.</p>
+          <p className="text-center py-8 text-zinc-400">No hay vehículos en la base de datos.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-zinc-300">
-              <thead className="bg-zinc-900/80 text-xs uppercase text-zinc-400 border-b border-zinc-700">
-                <tr>
-                  <th className="py-3 px-4">ID</th>
-                  <th className="py-3 px-4">Vehículo</th>
-                  <th className="py-3 px-4">Precio</th>
-                  <th className="py-3 px-4">Stock</th>
-                  <th className="py-3 px-4">Estado</th>
-                  <th className="py-3 px-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-700/60">
-                {vehiculos.map((v) => (
-                  <tr key={v.id} className="hover:bg-zinc-750 transition-colors">
-                    <td className="py-3 px-4 font-mono text-xs text-zinc-400">#{v.id}</td>
-                    <td className="py-3 px-4 font-semibold text-white">{v.nombre}</td>
-                    <td className="py-3 px-4 text-green-400 font-bold">
-                      ${Number(v.precio).toLocaleString("es-AR")}
-                    </td>
-                    <td className="py-3 px-4">{v.stock} un.</td>
-                    <td className="py-3 px-4">
-                      <span className="capitalize text-xs px-2 py-0.5 rounded bg-zinc-700 text-zinc-300">
-                        {v.estado_uso || "Usado"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleEliminar(v.id, v.nombre)}
-                        className="bg-rose-900/40 hover:bg-rose-700 text-rose-300 hover:text-white border border-rose-700/60 text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
-                      >
-                        🗑️ Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-zinc-700/50">
+            {vehiculos.map((v) => (
+              <div
+                key={v.id}
+                className={`py-3.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl transition-colors ${
+                  editandoId === v.id
+                    ? isDark
+                      ? "bg-amber-950/30 border border-amber-600/40"
+                      : "bg-amber-50 border border-amber-300"
+                    : isDark
+                    ? "hover:bg-zinc-750"
+                    : "hover:bg-zinc-50"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-zinc-400 bg-zinc-900 px-2 py-1 rounded">
+                    #{v.id}
+                  </span>
+                  <div>
+                    <h3
+                      className={`font-bold text-base ${
+                        isDark ? "text-white" : "text-zinc-900"
+                      }`}
+                    >
+                      {v.nombre}
+                    </h3>
+                    <p className="text-xs text-zinc-400">
+                      <span>{obtenerNombreMarca(v.marca_id)}</span> •{" "}
+                      <span>{obtenerNombreTipo(v.tipo_vehiculo_id)}</span> • Año{" "}
+                      <span>{v.modelo || "-"}</span> • Stock:{" "}
+                      <span className="font-semibold text-zinc-300">{v.stock}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 self-end sm:self-auto">
+                  <span className="font-extrabold text-green-500 text-lg">
+                    ${Number(v.precio).toLocaleString("es-AR")}
+                  </span>
+
+                  {/* Botón Lápiz: Editar */}
+                  <button
+                    onClick={() => iniciarEdicion(v)}
+                    className="p-2 bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 rounded-lg cursor-pointer transition-colors"
+                    title="Editar datos de este vehículo (PUT)"
+                  >
+                    ✏️
+                  </button>
+
+                  {/* Botón Basurero: Eliminar */}
+                  <button
+                    onClick={() => handleEliminar(v.id, v.nombre)}
+                    className="p-2 bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg cursor-pointer transition-colors"
+                    title="Eliminar este vehículo de la BD (DELETE)"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
