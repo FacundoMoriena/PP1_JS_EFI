@@ -13,7 +13,7 @@ export default function Vehiculos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Estados para filtros
+  // Estados de filtros
   const [busqueda, setBusqueda] = useState("");
   const [marcaFiltro, setMarcaFiltro] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState(tipoParam);
@@ -24,7 +24,7 @@ export default function Vehiculos() {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Si cambia el parámetro en la URL (?tipo=1), sincronizar el filtro
+  // Sincronizar parámetro de URL con estado
   useEffect(() => {
     if (tipoParam !== tipoFiltro) {
       setTipoFiltro(tipoParam);
@@ -57,23 +57,22 @@ export default function Vehiculos() {
       })
       .catch((err) => {
         console.error("Error al traer los datos:", err);
-        setError("No pudimos conectar con el servidor local o remoto.");
+        setError("No fue posible establecer conexión con el servidor de datos.");
         setLoading(false);
       });
   }, [API_URL]);
 
   const obtenerNombreMarca = (id) =>
-    marcas.find((m) => m.id === id)?.nombre || "Marca general";
+    marcas.find((m) => m.id === id)?.nombre || "General";
 
   const obtenerNombreTipo = (id) =>
-    tiposVehiculos.find((t) => t.id === id)?.nombre || "General";
+    tiposVehiculos.find((t) => t.id === id)?.nombre || "Vehículo";
 
-  // Lista única de años/modelos disponibles para el selector
   const aniosDisponibles = Array.from(
     new Set(vehiculos.map((v) => v.modelo).filter(Boolean))
   ).sort((a, b) => b - a);
 
-  // Filtrado reactivo en base a todos los criterios
+  // Filtro reactivo múltiple
   const vehiculosFiltrados = vehiculos.filter((auto) => {
     const coincideNombre = auto.nombre
       ?.toLowerCase()
@@ -98,21 +97,34 @@ export default function Vehiculos() {
 
   if (loading) {
     return (
-      <div className="py-24 text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-green-400 border-t-transparent mb-4"></div>
-        <p className="text-xl text-zinc-400">Cargando catálogo de vehículos...</p>
+      <div className="py-32 text-center">
+        <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-blue-500 border-t-transparent mb-4"></div>
+        <p className="text-sm font-medium tracking-wide uppercase text-zinc-500">
+          Cargando inventario automotriz...
+        </p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-md mx-auto my-12 p-6 bg-red-950/40 border border-red-800 rounded-xl text-center">
-        <p className="text-3xl mb-2">⚠️</p>
-        <p className="text-red-400 font-semibold mb-4">{error}</p>
+      <div
+        className={`max-w-md mx-auto my-16 p-8 rounded-2xl border text-center ${
+          isDark
+            ? "bg-zinc-900 border-red-900/40 text-zinc-300"
+            : "bg-white border-red-200 text-slate-700 shadow-lg"
+        }`}
+      >
+        <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-bold mb-2">Error de Sincronización</h3>
+        <p className="text-xs text-zinc-500 mb-6 leading-relaxed">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer"
+          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
         >
           Reintentar conexión
         </button>
@@ -122,65 +134,81 @@ export default function Vehiculos() {
 
   return (
     <div className="space-y-8">
-      {/* Encabezado y Filtros */}
+      {/* Cabecera y Contador */}
       <div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b pb-6 border-zinc-800">
           <div>
+            <span className="text-[11px] font-bold tracking-widest uppercase text-blue-500">
+              Inventario Disponible
+            </span>
             <h1
-              className={`text-3xl font-black ${
-                isDark ? "text-white" : "text-zinc-900"
+              className={`text-3xl font-black tracking-tight mt-1 ${
+                isDark ? "text-white" : "text-slate-900"
               }`}
             >
-              Catálogo de Vehículos
+              Catálogo de Unidades
             </h1>
             <p
-              className={`text-sm mt-1 ${
-                isDark ? "text-zinc-400" : "text-zinc-600"
+              className={`text-xs mt-1 ${
+                isDark ? "text-zinc-400" : "text-slate-500"
               }`}
             >
-              Mostrando {vehiculosFiltrados.length} de {vehiculos.length} unidades disponibles
+              Exhibiendo {vehiculosFiltrados.length} de {vehiculos.length} vehículos verificados
             </p>
           </div>
 
           {(busqueda || marcaFiltro || tipoFiltro || modeloFiltro) && (
             <button
               onClick={limpiarFiltros}
-              className="text-xs text-rose-400 hover:underline cursor-pointer flex items-center gap-1 font-semibold"
+              className="text-xs font-semibold text-blue-500 hover:text-blue-400 cursor-pointer flex items-center gap-1.5 uppercase tracking-wider"
             >
-              <span>✕</span> Limpiar todos los filtros
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Restablecer Filtros</span>
             </button>
           )}
         </div>
 
-        {/* Barra Modular de Filtros (Nombre, Tipo, Marca, Modelo) */}
+        {/* Barra de Filtros Profesional */}
         <div
-          className={`p-4 rounded-2xl border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 ${
+          className={`p-4 rounded-2xl border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6 ${
             isDark
-              ? "bg-zinc-800/80 border-zinc-700"
-              : "bg-white border-zinc-200 shadow-sm"
+              ? "bg-zinc-900/90 border-zinc-800"
+              : "bg-white border-slate-200 shadow-sm"
           }`}
         >
-          {/* 1. Búsqueda por Nombre */}
+          {/* Búsqueda por Nombre */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-              Nombre / Modelo
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
+              Búsqueda por Modelo
             </label>
-            <input
-              type="text"
-              placeholder="Buscar vehículo..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
-                isDark
-                  ? "bg-zinc-900 border-zinc-700 text-white"
-                  : "bg-zinc-50 border-zinc-300 text-zinc-900"
-              }`}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Ej: Corolla, Ranger..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className={`w-full pl-9 pr-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 ${
+                  isDark
+                    ? "bg-zinc-950 border-zinc-800 text-white placeholder-zinc-600"
+                    : "bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400"
+                }`}
+              />
+              <svg
+                className="w-4 h-4 absolute left-3 top-2.5 text-zinc-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
           </div>
 
-          {/* 2. Filtro por Tipo de Vehículo */}
+          {/* Filtro por Categoría */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
               Categoría
             </label>
             <select
@@ -189,10 +217,10 @@ export default function Vehiculos() {
                 setTipoFiltro(e.target.value);
                 setSearchParams(e.target.value ? { tipo: e.target.value } : {});
               }}
-              className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+              className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 cursor-pointer ${
                 isDark
-                  ? "bg-zinc-900 border-zinc-700 text-white"
-                  : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                  ? "bg-zinc-950 border-zinc-800 text-white"
+                  : "bg-slate-50 border-slate-300 text-slate-900"
               }`}
             >
               <option value="">Todas las categorías</option>
@@ -204,18 +232,18 @@ export default function Vehiculos() {
             </select>
           </div>
 
-          {/* 3. Filtro por Marca */}
+          {/* Filtro por Marca */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-              Marca
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
+              Fabricante / Marca
             </label>
             <select
               value={marcaFiltro}
               onChange={(e) => setMarcaFiltro(e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+              className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 cursor-pointer ${
                 isDark
-                  ? "bg-zinc-900 border-zinc-700 text-white"
-                  : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                  ? "bg-zinc-950 border-zinc-800 text-white"
+                  : "bg-slate-50 border-slate-300 text-slate-900"
               }`}
             >
               <option value="">Todas las marcas</option>
@@ -227,24 +255,24 @@ export default function Vehiculos() {
             </select>
           </div>
 
-          {/* 4. Filtro por Año / Modelo */}
+          {/* Filtro por Año */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-              Año del Modelo
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
+              Año de Fabricación
             </label>
             <select
               value={modeloFiltro}
               onChange={(e) => setModeloFiltro(e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+              className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 cursor-pointer ${
                 isDark
-                  ? "bg-zinc-900 border-zinc-700 text-white"
-                  : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                  ? "bg-zinc-950 border-zinc-800 text-white"
+                  : "bg-slate-50 border-slate-300 text-slate-900"
               }`}
             >
               <option value="">Todos los años</option>
               {aniosDisponibles.map((anio) => (
                 <option key={anio} value={anio}>
-                  Año {anio}
+                  Modelo {anio}
                 </option>
               ))}
             </select>
@@ -255,28 +283,32 @@ export default function Vehiculos() {
       {/* Grid de Vehículos */}
       {vehiculosFiltrados.length === 0 ? (
         <div
-          className={`text-center py-20 rounded-2xl border p-8 ${
+          className={`text-center py-24 rounded-2xl border p-8 ${
             isDark
-              ? "bg-zinc-800/40 border-zinc-700/60"
-              : "bg-white border-zinc-200"
+              ? "bg-zinc-900/50 border-zinc-800"
+              : "bg-white border-slate-200"
           }`}
         >
-          <p className="text-5xl mb-3">🔎</p>
+          <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-4 text-zinc-400">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
           <h3
-            className={`text-xl font-bold ${
-              isDark ? "text-zinc-200" : "text-zinc-800"
+            className={`text-base font-bold ${
+              isDark ? "text-white" : "text-slate-800"
             }`}
           >
-            No encontramos vehículos con esos filtros
+            No se hallaron vehículos coincidentes
           </h3>
-          <p className="text-sm text-zinc-500 mt-1 mb-6">
-            Intenta seleccionar otra categoría, marca o limpiar la búsqueda.
+          <p className="text-xs text-zinc-500 mt-1 mb-6 max-w-sm mx-auto">
+            Ajustá los parámetros del filtro o restablecé la búsqueda para ver todas las unidades.
           </p>
           <button
             onClick={limpiarFiltros}
-            className="bg-green-400 hover:bg-green-500 text-zinc-950 font-bold px-5 py-2 rounded-xl text-sm transition-colors cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg text-xs uppercase tracking-wider transition-colors cursor-pointer"
           >
-            Restablecer Filtros
+            Ver Todas las Unidades
           </button>
         </div>
       ) : (
@@ -286,19 +318,20 @@ export default function Vehiculos() {
             return (
               <div
                 key={auto.id}
-                className={`rounded-2xl overflow-hidden shadow-lg border flex flex-col justify-between transition-all duration-300 hover:border-green-400/60 group ${
+                className={`rounded-2xl overflow-hidden border flex flex-col justify-between transition-all duration-300 group ${
                   isDark
-                    ? "bg-zinc-800 border-zinc-700"
-                    : "bg-white border-zinc-200"
+                    ? "bg-zinc-900 border-zinc-800 hover:border-zinc-700 hover:shadow-xl hover:shadow-black/40"
+                    : "bg-white border-slate-200 hover:border-blue-400 hover:shadow-lg"
                 }`}
               >
-                <div className="relative">
-                  <Link to={`/vehiculos/${auto.id}`}>
+                {/* Imagen y Botón Favorito */}
+                <div className="relative overflow-hidden aspect-video bg-zinc-950 flex items-center justify-center">
+                  <Link to={`/vehiculos/${auto.id}`} className="w-full h-full block">
                     {auto.url_image ? (
                       <img
                         src={auto.url_image}
                         alt={auto.nombre}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src =
@@ -306,62 +339,94 @@ export default function Vehiculos() {
                         }}
                       />
                     ) : (
-                      <div className="w-full h-48 bg-zinc-900 flex items-center justify-center text-5xl">
-                        🚘
+                      <div className="w-full h-full flex items-center justify-center text-zinc-700">
+                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 19H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2z" />
+                        </svg>
                       </div>
                     )}
                   </Link>
 
-                  {/* Botón de Favoritos en la tarjeta */}
+                  {/* Estado Uso Badge */}
+                  <span className="absolute top-3 left-3 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-black/60 backdrop-blur-md text-white border border-white/10">
+                    {auto.estado_uso || "Certificado"}
+                  </span>
+
+                  {/* Botón Guardar Favorito (SVG Heart) */}
                   <button
                     onClick={() => toggleFavorito(auto)}
-                    className="absolute top-3 right-3 bg-zinc-900/80 hover:bg-zinc-900 backdrop-blur-sm p-2 rounded-full cursor-pointer transition-colors shadow"
-                    title={favorito ? "Quitar de favoritos" : "Añadir a favoritos"}
+                    className="absolute top-3 right-3 p-2 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md transition-all cursor-pointer"
+                    title={favorito ? "Quitar de favoritos" : "Guardar en favoritos"}
                   >
-                    <span className="text-base">{favorito ? "❤️" : "🤍"}</span>
+                    <svg
+                      className={`w-4 h-4 transition-colors ${
+                        favorito ? "fill-rose-500 text-rose-500" : "text-white"
+                      }`}
+                      fill={favorito ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
                   </button>
                 </div>
 
-                <div className="p-5 flex-1 flex flex-col justify-between">
+                {/* Detalles de la Tarjeta */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <div className="flex gap-2 text-xs font-bold text-zinc-400 uppercase tracking-wide">
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                       <span>{obtenerNombreMarca(auto.marca_id)}</span>
                       <span>•</span>
                       <span>{obtenerNombreTipo(auto.tipo_vehiculo_id)}</span>
+                      {auto.modelo && (
+                        <>
+                          <span>•</span>
+                          <span>{auto.modelo}</span>
+                        </>
+                      )}
                     </div>
 
                     <Link to={`/vehiculos/${auto.id}`}>
                       <h2
-                        className={`text-xl font-extrabold mt-1 group-hover:text-green-500 transition-colors ${
-                          isDark ? "text-white" : "text-zinc-900"
+                        className={`text-lg font-bold mt-1.5 transition-colors group-hover:text-blue-500 ${
+                          isDark ? "text-white" : "text-slate-900"
                         }`}
                       >
                         {auto.nombre}
                       </h2>
                     </Link>
 
-                    {auto.modelo && (
-                      <p className="text-xs text-zinc-400 mt-1">
-                        Año {auto.modelo} •{" "}
-                        <span className="capitalize">{auto.estado_uso || "Usado"}</span>
+                    {auto.descripcion && (
+                      <p className="text-xs text-zinc-500 line-clamp-2 mt-1">
+                        {auto.descripcion}
                       </p>
                     )}
                   </div>
 
-                  <div className="mt-5 pt-3 border-t border-zinc-700/40 flex items-center justify-between">
-                    <p className="text-green-500 font-black text-2xl">
-                      ${Number(auto.precio).toLocaleString("es-AR")}
-                    </p>
+                  <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 block">
+                        Precio Oficial
+                      </span>
+                      <p className="text-xl font-black text-blue-500">
+                        USD ${Number(auto.precio).toLocaleString("en-US")}
+                      </p>
+                    </div>
 
                     <Link
                       to={`/vehiculos/${auto.id}`}
-                      className={`text-xs font-bold px-3.5 py-2 rounded-xl transition-colors ${
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border ${
                         isDark
-                          ? "bg-zinc-700 hover:bg-green-500 hover:text-zinc-950 text-white"
-                          : "bg-zinc-100 hover:bg-green-500 hover:text-white text-zinc-800"
+                          ? "bg-zinc-800 hover:bg-blue-600 hover:text-white border-zinc-700/80 text-zinc-300"
+                          : "bg-slate-100 hover:bg-blue-600 hover:text-white border-slate-200 text-slate-800"
                       }`}
                     >
-                      Ver Detalle →
+                      Ficha →
                     </Link>
                   </div>
                 </div>

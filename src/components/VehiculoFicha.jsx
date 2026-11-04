@@ -1,44 +1,73 @@
 import { useOutletContext } from "react-router-dom";
+import { useContext } from "react";
+import { ThemeContext } from "../context/ThemeContext";
 
 export default function VehiculoFicha() {
   const vehiculo = useOutletContext();
+  const { isDark } = useContext(ThemeContext);
 
   if (!vehiculo) return null;
 
   return (
-    <div className="bg-zinc-800/60 p-6 rounded-lg border border-zinc-700/60 mt-4 space-y-4">
-      <h3 className="text-xl font-bold text-green-400 border-b border-zinc-700 pb-2">
-        Ficha Técnica y Estado
-      </h3>
+    <div
+      className={`p-6 sm:p-8 rounded-2xl border space-y-6 ${
+        isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-slate-200"
+      }`}
+    >
+      <div className="border-b pb-3 border-zinc-800">
+        <h3
+          className={`text-base font-bold uppercase tracking-wider ${
+            isDark ? "text-white" : "text-slate-900"
+          }`}
+        >
+          Especificaciones Técnicas & Disponibilidad
+        </h3>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-        <div className="bg-zinc-900/70 p-3 rounded">
-          <span className="text-zinc-400 block text-xs uppercase font-semibold">Año de Modelo</span>
-          <span className="text-lg font-bold">{vehiculo.modelo || "No especificado"}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+        <div className={`p-4 rounded-xl border ${isDark ? "bg-zinc-950 border-zinc-800/80" : "bg-slate-50 border-slate-200"}`}>
+          <span className="text-zinc-500 block uppercase text-[10px] font-bold tracking-wider mb-1">
+            Año de Fabricación
+          </span>
+          <span className="text-base font-bold text-blue-500">
+            {vehiculo.modelo || "No especificado"}
+          </span>
         </div>
 
-        <div className="bg-zinc-900/70 p-3 rounded">
-          <span className="text-zinc-400 block text-xs uppercase font-semibold">Estado de Uso</span>
-          <span className="text-lg font-bold capitalize">{vehiculo.estado_uso || "Usado seleccionado"}</span>
+        <div className={`p-4 rounded-xl border ${isDark ? "bg-zinc-950 border-zinc-800/80" : "bg-slate-50 border-slate-200"}`}>
+          <span className="text-zinc-500 block uppercase text-[10px] font-bold tracking-wider mb-1">
+            Condición del Vehículo
+          </span>
+          <span className="text-base font-bold capitalize text-zinc-300">
+            {vehiculo.estado_uso || "Usado Certificado"}
+          </span>
         </div>
 
-        <div className="bg-zinc-900/70 p-3 rounded">
-          <span className="text-zinc-400 block text-xs uppercase font-semibold">Unidades en Stock</span>
-          <span className="text-lg font-bold">{vehiculo.stock} unidades</span>
+        <div className={`p-4 rounded-xl border ${isDark ? "bg-zinc-950 border-zinc-800/80" : "bg-slate-50 border-slate-200"}`}>
+          <span className="text-zinc-500 block uppercase text-[10px] font-bold tracking-wider mb-1">
+            Inventario en Concesionaria
+          </span>
+          <span className="text-base font-bold text-zinc-300">
+            {vehiculo.stock} unidades
+          </span>
         </div>
 
-        <div className="bg-zinc-900/70 p-3 rounded">
-          <span className="text-zinc-400 block text-xs uppercase font-semibold">Disponibilidad</span>
-          <span className={`text-lg font-bold ${vehiculo.activo ? "text-emerald-400" : "text-rose-400"}`}>
-            {vehiculo.activo ? "Disponible para entrega" : "No disponible"}
+        <div className={`p-4 rounded-xl border ${isDark ? "bg-zinc-950 border-zinc-800/80" : "bg-slate-50 border-slate-200"}`}>
+          <span className="text-zinc-500 block uppercase text-[10px] font-bold tracking-wider mb-1">
+            Estado de Operación
+          </span>
+          <span className={`text-base font-bold ${vehiculo.activo ? "text-emerald-500" : "text-rose-500"}`}>
+            {vehiculo.activo ? "Activo para Venta" : "Baja temporal"}
           </span>
         </div>
       </div>
 
-      <div className="bg-zinc-900/70 p-4 rounded mt-4">
-        <span className="text-zinc-400 block text-xs uppercase font-semibold mb-1">Descripción del Vehículo</span>
-        <p className="text-zinc-200 leading-relaxed">
-          {vehiculo.descripcion || "Este vehículo no cuenta con descripción detallada cargada aún."}
+      <div className={`p-5 rounded-xl border ${isDark ? "bg-zinc-950 border-zinc-800/80" : "bg-slate-50 border-slate-200"}`}>
+        <span className="text-zinc-500 block uppercase text-[10px] font-bold tracking-wider mb-2">
+          Memoria Descriptiva
+        </span>
+        <p className="text-xs text-zinc-300 leading-relaxed">
+          {vehiculo.descripcion || "Esta unidad no registra observaciones complementarias en el sistema de gestión."}
         </p>
       </div>
     </div>

@@ -63,7 +63,7 @@ export default function Gestion() {
       })
       .catch((err) => {
         console.error("Error al cargar datos:", err);
-        setError("Error al comunicar con la API.");
+        setError("Error de comunicación con el backend.");
         setLoading(false);
       });
   };
@@ -84,39 +84,38 @@ export default function Gestion() {
     const newErrors = {};
 
     if (!form.nombre.trim()) {
-      newErrors.nombre = "El nombre es obligatorio.";
+      newErrors.nombre = "El nombre de la unidad es requerido.";
     } else if (form.nombre.trim().length < 3) {
       newErrors.nombre = "Debe tener al menos 3 caracteres.";
     }
 
     if (!form.precio) {
-      newErrors.precio = "El precio es obligatorio.";
+      newErrors.precio = "El valor de plaza es obligatorio.";
     } else if (Number(form.precio) <= 0) {
-      newErrors.precio = "Debe ser mayor a 0.";
+      newErrors.precio = "Debe ser un importe mayor a cero.";
     }
 
     if (!form.stock && form.stock !== 0) {
-      newErrors.stock = "El stock es obligatorio.";
+      newErrors.stock = "El stock es requerido.";
     } else if (Number(form.stock) < 0) {
-      newErrors.stock = "No puede ser negativo.";
+      newErrors.stock = "No puede registrar stock negativo.";
     }
 
     if (form.modelo && (Number(form.modelo) < 1900 || Number(form.modelo) > 2030)) {
-      newErrors.modelo = "Año inválido.";
+      newErrors.modelo = "Año de modelo inválido.";
     }
 
     if (!form.marca_id) {
-      newErrors.marca_id = "Selecciona una marca.";
+      newErrors.marca_id = "Seleccioná una marca fabricante.";
     }
 
     if (!form.tipo_vehiculo_id) {
-      newErrors.tipo_vehiculo_id = "Selecciona un tipo.";
+      newErrors.tipo_vehiculo_id = "Seleccioná la categoría correspondiente.";
     }
 
     return newErrors;
   };
 
-  // Activar modo edición: carga el vehículo en el formulario
   const iniciarEdicion = (auto) => {
     setEditandoId(auto.id);
     setForm({
@@ -150,7 +149,6 @@ export default function Gestion() {
     setFormErrors({});
   };
 
-  // Guardar (POST para nuevo, PUT para editar)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFeedback({ tipo: "", mensaje: "" });
@@ -192,15 +190,15 @@ export default function Gestion() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(
-          errorData.detail?.[0]?.msg || errorData.detail || "Error en la petición a la API"
+          errorData.detail?.[0]?.msg || errorData.detail || "Error en la operación del servidor"
         );
       }
 
       setFeedback({
         tipo: "exito",
         mensaje: editandoId
-          ? `¡Vehículo #${editandoId} actualizado con éxito (PUT)!`
-          : `¡Vehículo "${form.nombre}" creado exitosamente (POST)!`,
+          ? `Unidad #${editandoId} actualizada con éxito (operación PUT).`
+          : `Vehículo "${form.nombre}" registrado en inventario (operación POST).`,
       });
 
       cancelarEdicion();
@@ -209,17 +207,16 @@ export default function Gestion() {
       console.error("Error al guardar:", err);
       setFeedback({
         tipo: "error",
-        mensaje: err.message || "No se pudo procesar la operación.",
+        mensaje: err.message || "No se pudo procesar la solicitud.",
       });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Eliminar vehículo (DELETE)
   const handleEliminar = async (id, nombre) => {
     const confirmar = window.confirm(
-      `¿Deseas eliminar definitivamente el vehículo "${nombre}" (ID #${id})?`
+      `Confirmación requerida:\n¿Deseas dar de baja definitivamente el vehículo "${nombre}" (ID #${id}) de la base de datos?`
     );
     if (!confirmar) return;
 
@@ -229,7 +226,7 @@ export default function Gestion() {
       });
 
       if (!res.ok) {
-        throw new Error("No se pudo eliminar el vehículo.");
+        throw new Error("No fue posible procesar la baja.");
       }
 
       setVehiculos((prev) => prev.filter((item) => item.id !== id));
@@ -237,7 +234,7 @@ export default function Gestion() {
 
       setFeedback({
         tipo: "exito",
-        mensaje: `Vehículo "${nombre}" eliminado correctamente (DELETE).`,
+        mensaje: `Unidad "${nombre}" dada de baja correctamente (operación DELETE).`,
       });
     } catch (err) {
       console.error("Error al eliminar:", err);
@@ -249,89 +246,108 @@ export default function Gestion() {
     marcas.find((m) => m.id === id)?.nombre || "General";
 
   const obtenerNombreTipo = (id) =>
-    tiposVehiculos.find((t) => t.id === id)?.nombre || "General";
+    tiposVehiculos.find((t) => t.id === id)?.nombre || "Vehículo";
 
-  // Si no es admin, mostrar bloqueo
+  // Guardia de Acceso de Administrador
   if (!user.admin) {
     return (
-      <section className="flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-6xl mb-4">🔒</p>
-        <h2 className="text-3xl font-extrabold text-red-500 mb-2">
-          Acceso Restringido a Administradores
+      <section className="flex flex-col items-center justify-center py-28 text-center max-w-md mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-zinc-800 flex items-center justify-center mb-5 text-zinc-400">
+          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h2
+          className={`text-xl font-bold tracking-tight mb-2 ${
+            isDark ? "text-white" : "text-slate-900"
+          }`}
+        >
+          Acceso Restringido
         </h2>
-        <p className="text-zinc-400 max-w-md mb-6">
-          Esta vista permite gestionar la base de datos de vehículos. Puedes activar el modo administrador desde el botón en la barra superior.
+        <p className="text-xs text-zinc-500 leading-relaxed mb-6">
+          El panel de gestión de base de datos está reservado para personal autorizado.
+          Puedes alternar el modo administrador desde el botón en la barra superior.
         </p>
       </section>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
-      <div>
+    <div className="max-w-6xl mx-auto space-y-10">
+      {/* Cabecera del Panel */}
+      <div className="border-b pb-6 border-zinc-800">
+        <span className="text-[11px] font-bold tracking-widest uppercase text-blue-500">
+          Administración de Base de Datos
+        </span>
         <h1
-          className={`text-3xl font-black ${
-            isDark ? "text-white" : "text-zinc-900"
+          className={`text-3xl font-black tracking-tight mt-1 ${
+            isDark ? "text-white" : "text-slate-900"
           }`}
         >
-          Gestión de Base de Datos
+          Panel de Control de Inventario
         </h1>
         <p
-          className={`text-sm mt-1 ${
-            isDark ? "text-zinc-400" : "text-zinc-600"
+          className={`text-xs mt-1 ${
+            isDark ? "text-zinc-400" : "text-slate-500"
           }`}
         >
-          Panel de administración para registrar (POST), modificar (PUT) y dar de baja (DELETE) vehículos.
+          Operaciones CRUD directas sobre la base de datos de Alboriena Motors.
         </p>
       </div>
 
       {/* Alerta de Feedback */}
       {feedback.mensaje && (
         <div
-          className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between transition-all ${
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between border transition-all ${
             feedback.tipo === "exito"
-              ? "bg-emerald-950/70 border border-emerald-600 text-emerald-300"
-              : "bg-rose-950/70 border border-rose-600 text-rose-300"
+              ? isDark
+                ? "bg-blue-950/40 border-blue-500/40 text-blue-300"
+                : "bg-blue-50 border-blue-300 text-blue-800"
+              : isDark
+              ? "bg-rose-950/40 border-rose-500/40 text-rose-300"
+              : "bg-rose-50 border-rose-300 text-rose-800"
           }`}
         >
           <span>{feedback.mensaje}</span>
           <button
             onClick={() => setFeedback({ tipo: "", mensaje: "" })}
-            className="text-xs underline cursor-pointer ml-4"
+            className="text-[11px] underline cursor-pointer ml-4 font-bold"
           >
             Cerrar
           </button>
         </div>
       )}
 
-      {/* Formulario (Crear / Editar) */}
+      {/* Formulario Modular (Crear / Editar) */}
       <div
-        className={`p-6 sm:p-8 rounded-2xl border shadow-xl ${
+        className={`p-6 sm:p-8 rounded-2xl border ${
           isDark
-            ? "bg-zinc-800 border-zinc-700"
-            : "bg-white border-zinc-200"
+            ? "bg-zinc-900 border-zinc-800 shadow-xl shadow-black/30"
+            : "bg-white border-slate-200 shadow-md"
         }`}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2
-            className={`text-xl font-bold flex items-center gap-2 ${
-              editandoId ? "text-amber-400" : "text-green-500"
-            }`}
-          >
-            <span>{editandoId ? "✏️" : "➕"}</span>
-            <span>
+        <div className="flex justify-between items-center mb-6 border-b pb-4 border-zinc-800">
+          <div>
+            <h2
+              className={`text-base font-bold uppercase tracking-wider ${
+                editandoId ? "text-amber-500" : "text-blue-500"
+              }`}
+            >
+              {editandoId ? `Modificar Unidad #${editandoId}` : "Registrar Nueva Unidad"}
+            </h2>
+            <p className="text-[11px] text-zinc-500 mt-0.5">
               {editandoId
-                ? `Editando Vehículo #${editandoId}`
-                : "Registrar Nuevo Vehículo"}
-            </span>
-          </h2>
+                ? "Actualizá los campos y confirmá la petición PUT a la API."
+                : "Completá los datos obligatorios para emitir la petición POST a la base de datos."}
+            </p>
+          </div>
 
           {editandoId && (
             <button
               onClick={cancelarEdicion}
-              className="text-xs text-zinc-400 hover:text-white bg-zinc-700 px-3 py-1.5 rounded-lg cursor-pointer"
+              className="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg border border-zinc-700 cursor-pointer transition-colors"
             >
-              ✕ Cancelar Edición
+              Cancelar Edición
             </button>
           )}
         </div>
@@ -340,61 +356,65 @@ export default function Gestion() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Nombre */}
             <div>
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
-                Nombre / Modelo *
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                Nombre de la Unidad *
               </label>
               <input
                 type="text"
                 name="nombre"
                 value={form.nombre}
                 onChange={handleChange}
-                placeholder="Ej: Toyota Hilux"
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
-                  isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                placeholder="Ej: Toyota Corolla XEI"
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 ${
+                  formErrors.nombre
+                    ? "border-rose-500"
+                    : isDark
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               />
               {formErrors.nombre && (
-                <p className="text-xs text-rose-400 mt-1">{formErrors.nombre}</p>
+                <p className="text-[10px] text-rose-400 mt-1">{formErrors.nombre}</p>
               )}
             </div>
 
             {/* Precio */}
             <div>
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
-                Precio *
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                Precio (USD) *
               </label>
               <input
                 type="number"
                 name="precio"
                 value={form.precio}
                 onChange={handleChange}
-                placeholder="Ej: 32000"
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
-                  isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                placeholder="Ej: 28500"
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 ${
+                  formErrors.precio
+                    ? "border-rose-500"
+                    : isDark
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               />
               {formErrors.precio && (
-                <p className="text-xs text-rose-400 mt-1">{formErrors.precio}</p>
+                <p className="text-[10px] text-rose-400 mt-1">{formErrors.precio}</p>
               )}
             </div>
 
             {/* Marca */}
             <div>
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
-                Marca *
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                Marca Fabricante *
               </label>
               <select
                 name="marca_id"
                 value={form.marca_id}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 cursor-pointer ${
                   isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               >
                 {marcas.map((m) => (
@@ -407,17 +427,17 @@ export default function Gestion() {
 
             {/* Tipo */}
             <div>
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
-                Tipo / Categoría *
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                Segmento / Categoría *
               </label>
               <select
                 name="tipo_vehiculo_id"
                 value={form.tipo_vehiculo_id}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 cursor-pointer ${
                   isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               >
                 {tiposVehiculos.map((t) => (
@@ -430,7 +450,7 @@ export default function Gestion() {
 
             {/* Año / Modelo */}
             <div>
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                 Año de Modelo
               </label>
               <input
@@ -438,19 +458,19 @@ export default function Gestion() {
                 name="modelo"
                 value={form.modelo}
                 onChange={handleChange}
-                placeholder="Ej: 2023"
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                placeholder="Ej: 2024"
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 ${
                   isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               />
             </div>
 
             {/* Stock */}
             <div>
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
-                Stock *
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                Stock Inicial *
               </label>
               <input
                 type="number"
@@ -458,18 +478,18 @@ export default function Gestion() {
                 value={form.stock}
                 onChange={handleChange}
                 min="0"
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 ${
                   isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               />
             </div>
 
             {/* URL Imagen */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
-                URL de Imagen
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                URL de Fotografía
               </label>
               <input
                 type="url"
@@ -477,30 +497,30 @@ export default function Gestion() {
                 value={form.url_image}
                 onChange={handleChange}
                 placeholder="https://..."
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 ${
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 ${
                   isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               />
             </div>
 
-            {/* Estado Uso */}
+            {/* Condición */}
             <div>
-              <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                 Condición
               </label>
               <select
                 name="estado_uso"
                 value={form.estado_uso}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-green-400 cursor-pointer ${
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 cursor-pointer ${
                   isDark
-                    ? "bg-zinc-900 border-zinc-700 text-white"
-                    : "bg-zinc-50 border-zinc-300 text-zinc-900"
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
                 }`}
               >
-                <option value="nuevo">Nuevo / 0 Km</option>
+                <option value="nuevo">0 Km / Nuevo</option>
                 <option value="usado">Usado Certificado</option>
               </select>
             </div>
@@ -510,107 +530,118 @@ export default function Gestion() {
             <button
               type="submit"
               disabled={submitting}
-              className={`w-full py-3 rounded-xl font-bold transition-all cursor-pointer ${
+              className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
                 editandoId
-                  ? "bg-amber-400 hover:bg-amber-500 text-zinc-950"
-                  : "bg-green-400 hover:bg-green-500 text-zinc-950"
+                  ? "bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/20"
+                  : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
               }`}
             >
               {submitting
-                ? "Guardando..."
+                ? "Sincronizando..."
                 : editandoId
-                ? "Guardar Modificaciones (PUT)"
-                : "Crear Vehículo (POST)"}
+                ? "Guardar Cambios (Operación PUT)"
+                : "Registrar Vehículo (Operación POST)"}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Lista Compacta de Productos para Gestión (con lápiz y basurero) */}
+      {/* Lista Compacta de Inventario (con botones Lápiz y Basurero) */}
       <div
-        className={`p-6 sm:p-8 rounded-2xl border shadow-xl ${
+        className={`p-6 sm:p-8 rounded-2xl border ${
           isDark
-            ? "bg-zinc-800 border-zinc-700"
-            : "bg-white border-zinc-200"
+            ? "bg-zinc-900 border-zinc-800"
+            : "bg-white border-slate-200 shadow-sm"
         }`}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2
-            className={`text-xl font-bold ${
-              isDark ? "text-white" : "text-zinc-900"
-            }`}
-          >
-            📋 Listado de Vehículos Registrados
-          </h2>
+        <div className="flex justify-between items-center mb-6 border-b pb-4 border-zinc-800">
+          <div>
+            <h2
+              className={`text-base font-bold uppercase tracking-wider ${
+                isDark ? "text-white" : "text-slate-900"
+              }`}
+            >
+              Inventario Registrado ({vehiculos.length} unidades)
+            </h2>
+            <p className="text-[11px] text-zinc-500 mt-0.5">
+              Acciones de modificación (PUT) y eliminación (DELETE) por fila.
+            </p>
+          </div>
           <button
             onClick={cargarDatos}
-            className="text-xs text-zinc-400 hover:text-white bg-zinc-700 px-3 py-1.5 rounded-lg cursor-pointer"
+            className="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg border border-zinc-700 cursor-pointer transition-colors"
           >
-            🔄 Actualizar
+            Actualizar
           </button>
         </div>
 
         {loading ? (
-          <p className="text-center py-8 text-zinc-400">Cargando unidades...</p>
+          <p className="text-center py-10 text-xs text-zinc-500">Actualizando lista...</p>
         ) : vehiculos.length === 0 ? (
-          <p className="text-center py-8 text-zinc-400">No hay vehículos en la base de datos.</p>
+          <p className="text-center py-10 text-xs text-zinc-500">No hay registros cargados en la base de datos.</p>
         ) : (
-          <div className="divide-y divide-zinc-700/50">
+          <div className="divide-y divide-zinc-800/80">
             {vehiculos.map((v) => (
               <div
                 key={v.id}
                 className={`py-3.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl transition-colors ${
                   editandoId === v.id
                     ? isDark
-                      ? "bg-amber-950/30 border border-amber-600/40"
+                      ? "bg-amber-500/10 border border-amber-500/30"
                       : "bg-amber-50 border border-amber-300"
                     : isDark
-                    ? "hover:bg-zinc-750"
-                    : "hover:bg-zinc-50"
+                    ? "hover:bg-zinc-850"
+                    : "hover:bg-slate-50"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs text-zinc-400 bg-zinc-900 px-2 py-1 rounded">
+                  <span className="font-mono text-[10px] text-zinc-500 bg-zinc-950 px-2 py-1 rounded border border-zinc-800">
                     #{v.id}
                   </span>
                   <div>
                     <h3
-                      className={`font-bold text-base ${
-                        isDark ? "text-white" : "text-zinc-900"
+                      className={`font-bold text-sm tracking-tight ${
+                        isDark ? "text-white" : "text-slate-900"
                       }`}
                     >
                       {v.nombre}
                     </h3>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-[11px] text-zinc-500 mt-0.5">
                       <span>{obtenerNombreMarca(v.marca_id)}</span> •{" "}
                       <span>{obtenerNombreTipo(v.tipo_vehiculo_id)}</span> • Año{" "}
                       <span>{v.modelo || "-"}</span> • Stock:{" "}
-                      <span className="font-semibold text-zinc-300">{v.stock}</span>
+                      <span className="font-semibold text-zinc-400">{v.stock}</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4 self-end sm:self-auto">
-                  <span className="font-extrabold text-green-500 text-lg">
-                    ${Number(v.precio).toLocaleString("es-AR")}
+                  <span className="font-black text-blue-500 text-base">
+                    USD ${Number(v.precio).toLocaleString("en-US")}
                   </span>
 
-                  {/* Botón Lápiz: Editar */}
+                  {/* Botón Lápiz: Editar (PUT) */}
                   <button
                     onClick={() => iniciarEdicion(v)}
-                    className="p-2 bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 rounded-lg cursor-pointer transition-colors"
-                    title="Editar datos de este vehículo (PUT)"
+                    className="p-2 rounded-lg bg-zinc-800 hover:bg-amber-500/20 text-zinc-400 hover:text-amber-400 border border-zinc-700/80 transition-colors cursor-pointer"
+                    title="Editar datos de este vehículo (operación PUT)"
+                    aria-label="Editar"
                   >
-                    ✏️
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
                   </button>
 
-                  {/* Botón Basurero: Eliminar */}
+                  {/* Botón Basurero: Eliminar (DELETE) */}
                   <button
                     onClick={() => handleEliminar(v.id, v.nombre)}
-                    className="p-2 bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg cursor-pointer transition-colors"
-                    title="Eliminar este vehículo de la BD (DELETE)"
+                    className="p-2 rounded-lg bg-zinc-800 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 border border-zinc-700/80 transition-colors cursor-pointer"
+                    title="Eliminar este vehículo de la BD (operación DELETE)"
+                    aria-label="Eliminar"
                   >
-                    🗑️
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                   </button>
                 </div>
               </div>
