@@ -20,7 +20,10 @@ Consumo asíncrono de API REST desarrollada con **FastAPI** y **SQLModel**, cone
 2. Ejecutar servidor de desarrollo:
    ```bash
    npm run dev
+   
    ```
+###Link de la página
+https://alboriena-motors.vercel.app/vehiculos
 
 ### Integrantes
 * **Facundo Albornoz**
