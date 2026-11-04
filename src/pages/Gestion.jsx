@@ -32,7 +32,7 @@ export default function Gestion() {
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState({ tipo: "", mensaje: "" });
 
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
   // Cargar datos iniciales
   const cargarDatos = () => {
@@ -103,6 +103,10 @@ export default function Gestion() {
 
     if (form.modelo && (Number(form.modelo) < 1900 || Number(form.modelo) > 2030)) {
       newErrors.modelo = "Año de modelo inválido.";
+    }
+
+    if (form.descripcion && form.descripcion.length > 500) {
+      newErrors.descripcion = "La descripción no puede superar los 500 caracteres.";
     }
 
     if (!form.marca_id) {
@@ -523,6 +527,35 @@ export default function Gestion() {
                 <option value="nuevo">0 Km / Nuevo</option>
                 <option value="usado">Usado Certificado</option>
               </select>
+            </div>
+
+            {/* Descripción de la Unidad */}
+            <div className="sm:col-span-2 md:col-span-3">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  Descripción Técnica y Equipamiento
+                </label>
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  {form.descripcion.length}/500
+                </span>
+              </div>
+              <textarea
+                name="descripcion"
+                rows="3"
+                value={form.descripcion}
+                onChange={handleChange}
+                placeholder="Detallá el motor, estado general, equipamiento o características relevantes de la unidad..."
+                className={`w-full px-3 py-2 rounded-lg text-xs font-medium border focus:outline-none focus:border-blue-500 ${
+                  formErrors.descripcion
+                    ? "border-rose-500"
+                    : isDark
+                    ? "bg-zinc-950 border-zinc-800 text-white"
+                    : "bg-slate-50 border-slate-300 text-slate-900"
+                }`}
+              ></textarea>
+              {formErrors.descripcion && (
+                <p className="text-[10px] text-rose-400 mt-1">{formErrors.descripcion}</p>
+              )}
             </div>
           </div>
 
