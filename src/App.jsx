@@ -42,11 +42,11 @@ function MainLayout() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6">
         <Routes>
-          {/* Rutas Base (R1) */}
+          
           <Route path="/" element={<Home />} />
           <Route path="/vehiculos" element={<Vehiculos />} />
 
-          {/* Ruta Dinámica y Ruta Anidada con subrutas (R1 - según patrón Valentino) */}
+          
           <Route path="/vehiculos/:id" element={<VehiculoDetalle />}>
             <Route index element={<VehiculoFicha />} />
             <Route path="fabricante" element={<VehiculoFabricante />} />
@@ -55,7 +55,7 @@ function MainLayout() {
           <Route path="/gestion" element={<Gestion />} />
           <Route path="/favoritos" element={<Favoritos />} />
 
-          {/* Manejo de ruta no encontrada */}
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
